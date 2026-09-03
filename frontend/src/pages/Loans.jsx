@@ -74,11 +74,21 @@ export default function Loans() {
     loadLoans();
   }
 
-  function handleExport() {
-    window.open(`${client.defaults.baseURL}/loans/export`, "_blank");
-    // Note: this won't include the auth header since it's a plain link.
-    // Good enough for now — flagging as a known limitation.
-  }
+    async function handleExport() {
+      try {
+        const res = await client.get("/loans/export", { responseType: "blob" });
+        const url = window.URL.createObjectURL(new Blob([res.data]));
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", "loans-on-loan.csv");
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (err) {
+        alert("Failed to export CSV");
+      }
+    }
 
   return (
     <div>
