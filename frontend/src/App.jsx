@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Layout from "./components/Layout";
 import Items from "./pages/Items";
+import ItemDetail from "./pages/ItemDetail";
 
 function Home() {
   const { user } = useAuth();
@@ -26,6 +27,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/items" element={<Items />} />
+      <Route path="/items/:id" element={<ItemDetail />} />
       <Route
         element={
           <PrivateRoute>
