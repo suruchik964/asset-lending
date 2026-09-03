@@ -2,19 +2,15 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import Layout from "./components/Layout";
+import Items from "./pages/Items";
 
 function Home() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   return (
-    <div className="p-8">
+    <div>
       <h1 className="text-2xl font-bold">Welcome, {user.email}</h1>
       <p className="text-gray-600">Role: {user.role}</p>
-      <button
-        onClick={logout}
-        className="mt-4 bg-red-600 text-white px-4 py-2 rounded"
-      >
-        Log out
-      </button>
     </div>
   );
 }
@@ -29,14 +25,16 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/items" element={<Items />} />
       <Route
-        path="/"
         element={
           <PrivateRoute>
-            <Home />
+            <Layout />
           </PrivateRoute>
         }
-      />
+      >
+        <Route path="/" element={<Home />} />
+      </Route>
     </Routes>
   );
 }
