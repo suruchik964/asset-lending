@@ -1,0 +1,109 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  LIBRARIAN
+  MEMBER
+}
+
+enum LoanStatus {
+  REQUESTED
+  ISSUED
+  RETURNED
+  LOST
+}
+
+enum LoanEventType {
+  REQUESTED
+  ISSUED
+  RETURNED
+  LOST
+  NOTE
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  role         Role
+  createdAt    DateTime @default(now())
+
+  custodianOf     Custodian[]
+  loansBorrowed   Loan[]          @relation("Borrower")
+  loanEvents      LoanEvent[]
+  dismissals      AlertDismissal[]
+}
+
+model Item {
+  id         String   @id @default(uuid())
+  title      String
+  category   String
+  code       String   @unique
+  archived   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  custodians Custodian[]
+  loans      Loan[]
+}
+
+model Custodian {
+  userId String
+  itemId String
+  user   User @relation(fields: [userId], references: [id])
+  item   Item @relation(fields: [itemId], references: [id])
+
+  @@id([userId, itemId])
+}
+
+model Loan {
+  id          String     @id @default(uuid())
+  itemId      String
+  borrowerId  String
+  status      LoanStatus @default(REQUESTED)
+  requestedAt DateTime   @default(now())
+  issuedAt    DateTime?
+  dueDate     DateTime?
+  returnedAt  DateTime?
+
+  item        Item        @relation(fields: [itemId], references: [id])
+  borrower    User        @relation("Borrower", fields: [borrowerId], references: [id])
+  events      LoanEvent[]
+  dismissals  AlertDismissal[]
+
+  @@index([status])
+  @@index([itemId])
+  @@index([borrowerId])
+}
+
+model LoanEvent {
+  id        String        @id @default(uuid())
+  loanId    String
+  type      LoanEventType
+  actorId   String
+  note      String?
+  createdAt DateTime      @default(now())
+
+  loan  Loan @relation(fields: [loanId], references: [id])
+  actor User @relation(fields: [actorId], references: [id])
+}
+
+model AlertDismissal {
+  id        String   @id @default(uuid())
+  loanId    String
+  userId    String
+  issueKey  DateTime
+  createdAt DateTime @default(now())
+
+  loan Loan @relation(fields: [loanId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([loanId, userId, issueKey])
+}
