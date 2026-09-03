@@ -26,12 +26,67 @@ router.get("/mine", async (req, res) => {
 });
 
 // GET /api/loans — librarian only, basic list for now (search/filter/pagination comes next step)
-router.get("/", requireRole("LIBRARIAN"), async (req, res) => {
-  const loans = await prisma.loan.findMany({
-    include: { item: true, borrower: { select: { id: true, email: true } } },
-    orderBy: { requestedAt: "desc" },
+// GET /api/loans — librarian only. Supports search, filters, sort, pagination — all server-side.
+router.get('/', requireRole('LIBRARIAN'), async (req, res) => {
+  const {
+    q,               // text search: item title or borrower email
+    status,          // REQUESTED | ISSUED | RETURNED | LOST | OVERDUE
+    itemId,
+    borrowerId,
+    sortBy = 'requestedAt', // requestedAt | dueDate | status
+    sortDir = 'desc',
+    page = '1',
+    pageSize = '20',
+  } = req.query;
+
+  const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+  const sizeNum = Math.min(Math.max(parseInt(pageSize, 10) || 20, 1), 100);
+
+  const where = {};
+
+  if (itemId) where.itemId = itemId;
+  if (borrowerId) where.borrowerId = borrowerId;
+
+  // "OVERDUE" isn't a real stored status — it means ISSUED + past due date
+  if (status === 'OVERDUE') {
+    where.status = 'ISSUED';
+    where.dueDate = { lt: new Date() };
+  } else if (status) {
+    where.status = status;
+  }
+
+  if (q) {
+    where.OR = [
+      { item: { title: { contains: q, mode: 'insensitive' } } },
+      { borrower: { email: { contains: q, mode: 'insensitive' } } },
+    ];
+  }
+
+  const validSortFields = ['requestedAt', 'dueDate', 'status'];
+  const orderBy = validSortFields.includes(sortBy)
+    ? { [sortBy]: sortDir === 'asc' ? 'asc' : 'desc' }
+    : { requestedAt: 'desc' };
+
+  const [total, loans] = await prisma.$transaction([
+    prisma.loan.count({ where }),
+    prisma.loan.findMany({
+      where,
+      include: { item: true, borrower: { select: { id: true, email: true } } },
+      orderBy,
+      skip: (pageNum - 1) * sizeNum,
+      take: sizeNum,
+    }),
+  ]);
+
+  res.json({
+    data: loans.map(withComputedStatus),
+    pagination: {
+      page: pageNum,
+      pageSize: sizeNum,
+      total,
+      totalPages: Math.ceil(total / sizeNum),
+    },
   });
-  res.json(loans.map(withComputedStatus));
 });
 
 // GET /api/loans/:id — full detail with event timeline
