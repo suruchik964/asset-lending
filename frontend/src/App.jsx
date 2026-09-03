@@ -7,6 +7,8 @@ import Items from "./pages/Items";
 import ItemDetail from "./pages/ItemDetail";
 import Loans from "./pages/Loans";
 import LoanDetail from "./pages/LoanDetail";
+import MyLoans from "./pages/MyLoans";
+import MyItems from "./pages/MyItems";
 
 function Home() {
   const { user } = useAuth();
@@ -32,6 +34,8 @@ export default function App() {
       <Route path="/items/:id" element={<ItemDetail />} />
       <Route path="/loans" element={<Loans />} />
       <Route path="/loans/:id" element={<LoanDetail />} />
+      <Route path="/my-loans" element={<MyLoans />} />
+      <Route path="/my-items" element={<MyItems />} />
       <Route
         element={
           <PrivateRoute>
