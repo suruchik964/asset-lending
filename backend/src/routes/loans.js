@@ -1,6 +1,7 @@
 import { Router } from "express";
 import prisma from "../lib/prisma.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
+import { stringify } from "csv-stringify/sync";
 
 const router = Router();
 
@@ -14,6 +15,30 @@ function withComputedStatus(loan) {
     new Date(loan.dueDate) < new Date();
   return { ...loan, isOverdue };
 }
+
+// GET /api/loans/export — librarian only. CSV of everything currently out on loan.
+router.get('/export', requireRole('LIBRARIAN'), async (req, res) => {
+  const loans = await prisma.loan.findMany({
+    where: { status: 'ISSUED' },
+    include: { item: true, borrower: { select: { email: true } } },
+    orderBy: { dueDate: 'asc' },
+  });
+
+  const rows = loans.map(loan => ({
+    itemTitle: loan.item.title,
+    itemCode: loan.item.code,
+    borrowerEmail: loan.borrower.email,
+    issuedAt: loan.issuedAt ? loan.issuedAt.toISOString() : '',
+    dueDate: loan.dueDate ? loan.dueDate.toISOString() : '',
+    isOverdue: loan.dueDate && new Date(loan.dueDate) < new Date() ? 'yes' : 'no',
+  }));
+
+  const csv = stringify(rows, { header: true });
+
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="loans-on-loan.csv"');
+  res.send(csv);
+});
 
 // GET /api/loans/mine — member's own loans
 router.get("/mine", async (req, res) => {
@@ -284,6 +309,48 @@ router.post("/:id/notes", requireRole("LIBRARIAN"), async (req, res) => {
   });
 
   res.status(201).json(event);
+});
+
+// POST /api/loans/bulk-return — librarian only. Body: { loanIds: [...] }
+router.post('/bulk-return', requireRole('LIBRARIAN'), async (req, res) => {
+  const { loanIds, note } = req.body;
+  if (!Array.isArray(loanIds) || loanIds.length === 0) {
+    return res.status(400).json({ error: 'loanIds must be a non-empty array' });
+  }
+
+  const report = [];
+
+  for (const loanId of loanIds) {
+    const loan = await prisma.loan.findUnique({ where: { id: loanId } });
+
+    if (!loan) {
+      report.push({ loanId, success: false, error: 'Loan not found' });
+      continue;
+    }
+    if (loan.status !== 'ISSUED') {
+      report.push({ loanId, success: false, error: `Cannot return a loan with status ${loan.status}` });
+      continue;
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.loan.update({
+        where: { id: loanId },
+        data: { status: 'RETURNED', returnedAt: new Date() },
+      });
+      await tx.loanEvent.create({
+        data: { loanId, type: 'RETURNED', actorId: req.user.userId, note: note || null },
+      });
+    });
+
+    report.push({ loanId, success: true });
+  }
+
+  res.json({
+    total: loanIds.length,
+    succeeded: report.filter(r => r.success).length,
+    failed: report.filter(r => !r.success).length,
+    report,
+  });
 });
 
 export default router;

@@ -1,6 +1,10 @@
 import { Router } from "express";
 import prisma from "../lib/prisma.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
+import multer from "multer";
+import { parse } from "csv-parse/sync";
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 const router = Router();
 
@@ -158,5 +162,54 @@ router.delete(
     }
   },
 );
+
+// POST /api/items/import — librarian only, CSV bulk import
+// Expected CSV columns: title,category,code
+router.post('/import', requireRole('LIBRARIAN'), upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded (field name must be "file")' });
+
+  let records;
+  try {
+    records = parse(req.file.buffer.toString('utf-8'), {
+      columns: true,
+      skip_empty_lines: true,
+      trim: true,
+    });
+  } catch (err) {
+    return res.status(400).json({ error: `Could not parse CSV: ${err.message}` });
+  }
+
+  const report = [];
+
+  for (let i = 0; i < records.length; i++) {
+    const rowNum = i + 2; // +2 because row 1 is the header and humans count from 1
+    const { title, category, code } = records[i];
+
+    if (!title || !category || !code) {
+      report.push({ row: rowNum, success: false, error: 'title, category and code are all required' });
+      continue;
+    }
+
+    const existing = await prisma.item.findUnique({ where: { code } });
+    if (existing) {
+      report.push({ row: rowNum, success: false, error: `Item with code "${code}" already exists` });
+      continue;
+    }
+
+    try {
+      const item = await prisma.item.create({ data: { title, category, code } });
+      report.push({ row: rowNum, success: true, itemId: item.id });
+    } catch (err) {
+      report.push({ row: rowNum, success: false, error: 'Unexpected error creating item' });
+    }
+  }
+
+  res.json({
+    totalRows: records.length,
+    succeeded: report.filter(r => r.success).length,
+    failed: report.filter(r => !r.success).length,
+    report,
+  });
+});
 
 export default router;
