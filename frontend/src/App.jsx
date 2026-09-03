@@ -10,6 +10,7 @@ import LoanDetail from "./pages/LoanDetail";
 import MyLoans from "./pages/MyLoans";
 import MyItems from "./pages/MyItems";
 import Dashboard from "./pages/Dashboard";
+import Alerts from "./pages/Alerts";
 
 function Home() {
   const { user } = useAuth();
@@ -38,6 +39,7 @@ export default function App() {
       <Route path="/my-loans" element={<MyLoans />} />
       <Route path="/my-items" element={<MyItems />} />
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/alerts" element={<Alerts />} />
       <Route
         element={
           <PrivateRoute>
