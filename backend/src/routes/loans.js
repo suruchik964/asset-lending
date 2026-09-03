@@ -197,7 +197,7 @@ router.post("/:id/issue", requireRole("LIBRARIAN"), async (req, res) => {
     where: {
       itemId: loan.itemId,
       id: { not: loan.id },
-      status: { in: ["REQUESTED", "ISSUED"] },
+      status: "ISSUED",
     },
   });
   if (conflicting) {
