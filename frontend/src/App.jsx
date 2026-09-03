@@ -6,6 +6,7 @@ import Layout from "./components/Layout";
 import Items from "./pages/Items";
 import ItemDetail from "./pages/ItemDetail";
 import Loans from "./pages/Loans";
+import LoanDetail from "./pages/LoanDetail";
 
 function Home() {
   const { user } = useAuth();
@@ -30,6 +31,7 @@ export default function App() {
       <Route path="/items" element={<Items />} />
       <Route path="/items/:id" element={<ItemDetail />} />
       <Route path="/loans" element={<Loans />} />
+      <Route path="/loans/:id" element={<LoanDetail />} />
       <Route
         element={
           <PrivateRoute>
