@@ -39,7 +39,7 @@ export default function Alerts() {
                 {loan.item.title}
               </Link>
               <p className="text-sm text-gray-500">
-                {loan.borrower.email} · due{" "}
+                {loan.borrower.name} · due{" "}
                 {new Date(loan.dueDate).toLocaleDateString()}
               </p>
             </div>

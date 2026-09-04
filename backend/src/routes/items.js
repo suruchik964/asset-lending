@@ -18,7 +18,7 @@ router.get("/", async (req, res) => {
   const items = await prisma.item.findMany({
     where: includeArchived ? {} : { archived: false },
     include: {
-      custodians: { include: { user: { select: { id: true, email: true } } } },
+      custodians: { include: { user: { select: { id: true, name: true, email: true } } } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -31,7 +31,7 @@ router.get("/mine", requireRole("LIBRARIAN"), async (req, res) => {
   const items = await prisma.item.findMany({
     where: { custodians: { some: { userId: req.user.userId } } },
     include: {
-      custodians: { include: { user: { select: { id: true, email: true } } } },
+      custodians: { include: { user: { select: { id: true, name: true, email: true } } } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -44,9 +44,9 @@ router.get("/:id", async (req, res) => {
   const item = await prisma.item.findUnique({
     where: { id: req.params.id },
     include: {
-      custodians: { include: { user: { select: { id: true, email: true } } } },
+      custodians: { include: { user: { select: { id: true, name: true, email: true } } } },
       loans: {
-        include: { borrower: { select: { id: true, email: true } } },
+        include: { borrower: { select: { id: true, name: true, email: true } } },
         orderBy: { requestedAt: "desc" },
       },
     },

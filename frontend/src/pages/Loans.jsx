@@ -168,7 +168,7 @@ export default function Loans() {
                       {loan.item.title}
                     </Link>
                     <p className="text-sm text-gray-500">
-                      {loan.borrower.email} · {loan.status}
+                      {loan.borrower.name} · {loan.status}
                       {loan.isOverdue && " · OVERDUE"}
                       {loan.dueDate &&
                         ` · due ${new Date(loan.dueDate).toLocaleDateString()}`}

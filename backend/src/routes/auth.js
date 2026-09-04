@@ -6,12 +6,12 @@ import prisma from "../lib/prisma.js";
 const router = Router();
 
 router.post("/signup", async (req, res) => {
-  const { email, password, role } = req.body;
+  const { name, email, password, role } = req.body;
 
-  if (!email || !password || !role) {
+  if (!name?.trim() || !email || !password || !role) {
     return res
       .status(400)
-      .json({ error: "email, password and role are required" });
+      .json({ error: "name, email, password and role are required" });
   }
   if (!["LIBRARIAN", "MEMBER"].includes(role)) {
     return res.status(400).json({ error: "role must be LIBRARIAN or MEMBER" });
@@ -26,7 +26,7 @@ router.post("/signup", async (req, res) => {
 
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await prisma.user.create({
-    data: { email, passwordHash, role },
+    data: { name: name.trim(), email, passwordHash, role },
   });
 
   const token = jwt.sign(
@@ -37,7 +37,7 @@ router.post("/signup", async (req, res) => {
 
   res.status(201).json({
     token,
-    user: { id: user.id, email: user.email, role: user.role },
+    user: { id: user.id, name: user.name, email: user.email, role: user.role },
   });
 });
 
@@ -66,7 +66,7 @@ router.post("/login", async (req, res) => {
 
   res.json({
     token,
-    user: { id: user.id, email: user.email, role: user.role },
+    user: { id: user.id, name: user.name, email: user.email, role: user.role },
   });
 });
 

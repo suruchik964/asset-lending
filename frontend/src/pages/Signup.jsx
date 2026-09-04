@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export default function Signup() {
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("MEMBER");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signup } = useAuth();
+  const { signup, user } = useAuth();
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
@@ -16,7 +17,7 @@ export default function Signup() {
     setError("");
     setLoading(true);
     try {
-      await signup(email, password, role);
+      await signup(name, email, password, role);
       navigate("/");
     } catch (err) {
       setError(err.response?.data?.error || "Signup failed");
@@ -24,6 +25,8 @@ export default function Signup() {
       setLoading(false);
     }
   }
+
+  if (user) return <Navigate to="/" replace />;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -38,6 +41,14 @@ export default function Signup() {
             {error}
           </div>
         )}
+
+        <label className="block mb-2 text-sm font-medium">Name</label>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full border rounded px-3 py-2 mb-4"
+          required
+        />
 
         <label className="block mb-2 text-sm font-medium">Email</label>
         <input

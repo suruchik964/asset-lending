@@ -48,7 +48,7 @@ export default function Dashboard() {
           <div className="space-y-2">
             {data.byCustodian.map((c) => (
               <div key={c.userId} className="flex justify-between text-sm">
-                <span>{c.email}</span>
+                <span>{c.name}</span>
                 <span className="font-medium">{c.openLoans}</span>
               </div>
             ))}

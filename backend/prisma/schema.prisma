@@ -30,6 +30,7 @@ enum LoanEventType {
 
 model User {
   id           String   @id @default(uuid())
+  name         String
   email        String   @unique
   passwordHash String
   role         Role

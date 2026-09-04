@@ -6,6 +6,7 @@ import itemsRoutes from "./routes/items.js";
 import loansRoutes from "./routes/loans.js";
 import dashboardRoutes from "./routes/dashboard.js";
 import alertsRoutes from "./routes/alerts.js";
+import usersRoutes from "./routes/users.js";
 
 const app = express();
 
@@ -16,6 +17,7 @@ app.use("/api/items", itemsRoutes);
 app.use("/api/loans", loansRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/alerts", alertsRoutes);
+app.use("/api/users", usersRoutes);
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });

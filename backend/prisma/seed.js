@@ -11,8 +11,9 @@ async function main() {
   // Users
   const librarian1 = await prisma.user.upsert({
     where: { email: "librarian1@example.com" },
-    update: {},
+    update: { name: "Alex Librarian" },
     create: {
+      name: "Alex Librarian",
       email: "librarian1@example.com",
       passwordHash,
       role: "LIBRARIAN",
@@ -20,8 +21,9 @@ async function main() {
   });
   const librarian2 = await prisma.user.upsert({
     where: { email: "librarian2@example.com" },
-    update: {},
+    update: { name: "Blair Librarian" },
     create: {
+      name: "Blair Librarian",
       email: "librarian2@example.com",
       passwordHash,
       role: "LIBRARIAN",
@@ -29,13 +31,13 @@ async function main() {
   });
   const member1 = await prisma.user.upsert({
     where: { email: "member1@example.com" },
-    update: {},
-    create: { email: "member1@example.com", passwordHash, role: "MEMBER" },
+    update: { name: "Casey Member" },
+    create: { name: "Casey Member", email: "member1@example.com", passwordHash, role: "MEMBER" },
   });
   const member2 = await prisma.user.upsert({
     where: { email: "member2@example.com" },
-    update: {},
-    create: { email: "member2@example.com", passwordHash, role: "MEMBER" },
+    update: { name: "Dana Member" },
+    create: { name: "Dana Member", email: "member2@example.com", passwordHash, role: "MEMBER" },
   });
 
   // Items

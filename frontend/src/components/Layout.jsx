@@ -64,7 +64,7 @@ export default function Layout() {
         </div>
         <div className="flex items-center gap-4">
           <span className="text-sm text-gray-500">
-            {user?.email} ({user?.role})
+            {user?.name || user?.email} ({user?.role})
           </span>
           <button
             onClick={logout}

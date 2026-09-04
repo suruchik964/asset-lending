@@ -7,25 +7,25 @@ export default function ItemDetail() {
   const { id } = useParams();
   const { user } = useAuth();
   const [item, setItem] = useState(null);
-  const [custodianEmail, setCustodianEmail] = useState("");
+  const [custodianId, setCustodianId] = useState("");
+  const [librarians, setLibrarians] = useState([]);
   const [error, setError] = useState("");
 
   function loadItem() {
-    client.get(`/items/${id}`).then((res) => setItem(res.data));
+    client.get(`/items/${id}`).then((res) => setItem(res.data)).catch((err) => setError(err.response?.data?.error || "Failed to load item"));
   }
 
   useEffect(() => {
     loadItem();
+    if (user.role === "LIBRARIAN") client.get("/users", { params: { role: "LIBRARIAN" } }).then((res) => setLibrarians(res.data)).catch(() => setError("Failed to load librarians"));
   }, [id]);
 
   async function handleAddCustodian(e) {
     e.preventDefault();
     setError("");
-    // We need a userId, but we only have an email from the form.
-    // Simplest approach for now: ask the librarian to paste the user's ID directly.
     try {
-      await client.post(`/items/${id}/custodians`, { userId: custodianEmail });
-      setCustodianEmail("");
+      await client.post(`/items/${id}/custodians`, { userId: custodianId });
+      setCustodianId("");
       loadItem();
     } catch (err) {
       setError(err.response?.data?.error || "Failed to add custodian");
@@ -59,7 +59,7 @@ export default function ItemDetail() {
                 key={c.userId}
                 className="flex justify-between items-center py-1"
               >
-                {c.user.email}
+                <span>{c.user.name} <span className="text-gray-500">({c.user.email})</span></span>
                 <button
                   onClick={() => handleRemoveCustodian(c.userId)}
                   className="text-red-600 text-xs"
@@ -78,12 +78,15 @@ export default function ItemDetail() {
             </div>
           )}
           <form onSubmit={handleAddCustodian} className="flex gap-2">
-            <input
-              placeholder="Librarian user ID"
-              value={custodianEmail}
-              onChange={(e) => setCustodianEmail(e.target.value)}
+            <select
+              value={custodianId}
+              onChange={(e) => setCustodianId(e.target.value)}
               className="border rounded px-3 py-1 text-sm flex-1"
-            />
+              required
+            >
+              <option value="">Select a librarian</option>
+              {librarians.map((librarian) => <option key={librarian.id} value={librarian.id}>{librarian.name} ({librarian.email})</option>)}
+            </select>
             <button
               type="submit"
               className="bg-blue-600 text-white px-3 py-1 rounded text-sm"
@@ -99,7 +102,7 @@ export default function ItemDetail() {
         <div className="divide-y">
           {item.loans.map((loan) => (
             <div key={loan.id} className="py-2 text-sm flex justify-between">
-              <span>{loan.borrower.email}</span>
+              <span>{loan.borrower.name}</span>
               <span className="text-gray-500">{loan.status}</span>
             </div>
           ))}

@@ -14,7 +14,7 @@ async function getActiveAlerts() {
     where: { status: "ISSUED", dueDate: { lt: now } },
     include: {
       item: true,
-      borrower: { select: { id: true, email: true } },
+      borrower: { select: { id: true, name: true, email: true } },
       dismissals: true,
     },
     orderBy: { dueDate: "asc" },

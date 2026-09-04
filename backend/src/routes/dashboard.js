@@ -47,7 +47,7 @@ router.get("/", async (req, res) => {
   // Breakdown by custodian — count of currently-open loans (Requested/Issued) per custodian
   const custodians = await prisma.custodian.findMany({
     include: {
-      user: { select: { id: true, email: true } },
+      user: { select: { id: true, name: true, email: true } },
       item: {
         include: {
           loans: { where: { status: { in: ["REQUESTED", "ISSUED"] } } },
@@ -62,6 +62,7 @@ router.get("/", async (req, res) => {
     if (!byCustodianMap[key]) {
       byCustodianMap[key] = {
         userId: c.user.id,
+        name: c.user.name,
         email: c.user.email,
         openLoans: 0,
       };
