@@ -15,9 +15,14 @@ export default function Items() {
 
   function loadItems() {
     setLoading(true);
+    setError("");
     client
       .get("/items")
       .then((res) => setItems(res.data))
+      .catch((err) => {
+        setItems([]);
+        setError(err.response?.data?.error || "Could not load the catalogue. Please sign in again and retry.");
+      })
       .finally(() => setLoading(false));
   }
 
@@ -109,6 +114,10 @@ export default function Items() {
             Create
           </button>
         </form>
+      )}
+
+      {error && !showForm && (
+        <div className="bg-red-50 text-red-700 p-3 rounded mb-4 text-sm" role="alert">{error}</div>
       )}
 
       <div className="bg-white rounded shadow divide-y">

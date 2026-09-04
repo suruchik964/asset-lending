@@ -16,8 +16,8 @@ function Home() {
   const { user } = useAuth();
   return (
     <div>
-      <h1 className="text-2xl font-bold">Welcome, {user.email}</h1>
-      <p className="text-gray-600">Role: {user.role}</p>
+      <h1 className="text-2xl font-bold mb-2">Welcome, {user.name}</h1>
+      <p className="text-gray-600">You are signed in as a {user.role.toLowerCase()}.</p>
     </div>
   );
 }
@@ -32,14 +32,6 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
-      <Route path="/items" element={<Items />} />
-      <Route path="/items/:id" element={<ItemDetail />} />
-      <Route path="/loans" element={<Loans />} />
-      <Route path="/loans/:id" element={<LoanDetail />} />
-      <Route path="/my-loans" element={<MyLoans />} />
-      <Route path="/my-items" element={<MyItems />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/alerts" element={<Alerts />} />
       <Route
         element={
           <PrivateRoute>
@@ -48,6 +40,14 @@ export default function App() {
         }
       >
         <Route path="/" element={<Home />} />
+        <Route path="/items" element={<Items />} />
+        <Route path="/items/:id" element={<ItemDetail />} />
+        <Route path="/loans" element={<Loans />} />
+        <Route path="/loans/:id" element={<LoanDetail />} />
+        <Route path="/my-loans" element={<MyLoans />} />
+        <Route path="/my-items" element={<MyItems />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/alerts" element={<Alerts />} />
       </Route>
     </Routes>
   );

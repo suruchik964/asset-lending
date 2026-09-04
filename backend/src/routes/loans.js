@@ -20,13 +20,14 @@ function withComputedStatus(loan) {
 router.get('/export', requireRole('LIBRARIAN'), async (req, res) => {
   const loans = await prisma.loan.findMany({
     where: { status: 'ISSUED' },
-    include: { item: true, borrower: { select: { email: true } } },
+    include: { item: true, borrower: { select: { name: true, email: true } } },
     orderBy: { dueDate: 'asc' },
   });
 
   const rows = loans.map(loan => ({
     itemTitle: loan.item.title,
     itemCode: loan.item.code,
+    borrowerName: loan.borrower.name,
     borrowerEmail: loan.borrower.email,
     issuedAt: loan.issuedAt ? loan.issuedAt.toISOString() : '',
     dueDate: loan.dueDate ? loan.dueDate.toISOString() : '',
@@ -83,7 +84,7 @@ router.get('/', requireRole('LIBRARIAN'), async (req, res) => {
   if (q) {
     where.OR = [
       { item: { title: { contains: q, mode: 'insensitive' } } },
-      { borrower: { email: { contains: q, mode: 'insensitive' } } },
+      { borrower: { OR: [{ name: { contains: q, mode: 'insensitive' } }, { email: { contains: q, mode: 'insensitive' } }] } },
     ];
   }
 
@@ -96,7 +97,7 @@ router.get('/', requireRole('LIBRARIAN'), async (req, res) => {
     prisma.loan.count({ where }),
     prisma.loan.findMany({
       where,
-      include: { item: true, borrower: { select: { id: true, email: true } } },
+      include: { item: true, borrower: { select: { id: true, name: true, email: true } } },
       orderBy,
       skip: (pageNum - 1) * sizeNum,
       take: sizeNum,
@@ -120,9 +121,9 @@ router.get("/:id", async (req, res) => {
     where: { id: req.params.id },
     include: {
       item: true,
-      borrower: { select: { id: true, email: true } },
+      borrower: { select: { id: true, name: true, email: true } },
       events: {
-        include: { actor: { select: { id: true, email: true } } },
+        include: { actor: { select: { id: true, name: true, email: true } } },
         orderBy: { createdAt: "asc" },
       },
     },
@@ -192,12 +193,21 @@ router.post("/:id/issue", requireRole("LIBRARIAN"), async (req, res) => {
       });
   }
 
+    const item = await prisma.item.findUnique({ where: { id: loan.itemId } });
+    if (!item || item.archived) {
+      return res
+        .status(409)
+        .json({
+          error: "This item is archived or marked lost and cannot be issued.",
+        });
+    }
+
   // The core rule: item cannot have any other open loan (Requested or Issued)
   const conflicting = await prisma.loan.findFirst({
     where: {
       itemId: loan.itemId,
       id: { not: loan.id },
-      status: "ISSUED",
+      status: { in: ["REQUESTED", "ISSUED"] },
     },
   });
   if (conflicting) {
@@ -277,21 +287,25 @@ router.post("/:id/lost", requireRole("LIBRARIAN"), async (req, res) => {
       });
   }
 
-  const updated = await prisma.$transaction(async (tx) => {
-    const result = await tx.loan.update({
-      where: { id: loan.id },
-      data: { status: "LOST" },
+    const updated = await prisma.$transaction(async (tx) => {
+      const result = await tx.loan.update({
+        where: { id: loan.id },
+        data: { status: "LOST" },
+      });
+      await tx.loanEvent.create({
+        data: {
+          loanId: loan.id,
+          type: "LOST",
+          actorId: req.user.userId,
+          note: note || null,
+        },
+      });
+      await tx.item.update({
+        where: { id: loan.itemId },
+        data: { archived: true },
+      });
+      return result;
     });
-    await tx.loanEvent.create({
-      data: {
-        loanId: loan.id,
-        type: "LOST",
-        actorId: req.user.userId,
-        note: note || null,
-      },
-    });
-    return result;
-  });
 
   res.json(updated);
 });
