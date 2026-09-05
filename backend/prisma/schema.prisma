@@ -47,6 +47,8 @@ model Item {
   title      String
   category   String
   code       String   @unique
+  // Archive only removes an item from the default catalogue and blocks new requests/issues.
+  // It preserves loan history and custodianship, and never prevents return/lost actions on an issued loan.
   archived   Boolean  @default(false)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
