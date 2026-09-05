@@ -200,16 +200,17 @@ router.post("/:id/issue", requireRole("LIBRARIAN"), async (req, res) => {
       });
   }
 
-    const item = await prisma.item.findUnique({ where: { id: loan.itemId } });
-    if (!item || item.archived) {
-      return res
-        .status(409)
-        .json({
-          error: "This item is archived or marked lost and cannot be issued.",
-        });
-    }
+  const item = await prisma.item.findUnique({ where: { id: loan.itemId } });
+  if (!item) return res.status(404).json({ error: "Item not found" });
 
-  // Requests are a queue, not a checkout: only an already-issued loan blocks issue.
+  // Check A: an archived item cannot begin a new issue cycle, including after Lost.
+  if (item.archived) {
+    return res.status(409).json({
+      error: "This item is archived or marked lost and cannot be issued.",
+    });
+  }
+
+  // Check B: requests are a queue; only another issued loan blocks this item.
   const conflicting = await prisma.loan.findFirst({
     where: {
       itemId: loan.itemId,
