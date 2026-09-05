@@ -53,20 +53,32 @@ router.post("/:loanId/dismiss", async (req, res) => {
       .json({ error: "This loan has no active overdue alert to dismiss" });
   }
 
-  await prisma.alertDismissal.upsert({
-    where: {
+  await prisma.$transaction(async (tx) => {
+    const dismissalKey = {
       loanId_userId_issueKey: {
         loanId: loan.id,
         userId: req.user.userId,
         issueKey: loan.issuedAt,
       },
-    },
-    create: {
-      loanId: loan.id,
-      userId: req.user.userId,
-      issueKey: loan.issuedAt,
-    },
-    update: {},
+    };
+    const existing = await tx.alertDismissal.findUnique({ where: dismissalKey });
+    if (existing) return;
+
+    await tx.alertDismissal.create({
+      data: {
+        loanId: loan.id,
+        userId: req.user.userId,
+        issueKey: loan.issuedAt,
+      },
+    });
+    await tx.loanEvent.create({
+      data: {
+        loanId: loan.id,
+        type: "NOTE",
+        actorId: req.user.userId,
+        note: "System action: overdue alert dismissed",
+      },
+    });
   });
 
   res.status(204).send();
