@@ -41,11 +41,15 @@ router.get("/mine", requireRole("LIBRARIAN"), async (req, res) => {
 
 // GET /api/items/:id — item detail with full loan history
 router.get("/:id", async (req, res) => {
+  const loanWhere = req.user.role === "MEMBER"
+    ? { borrowerId: req.user.userId }
+    : {};
   const item = await prisma.item.findUnique({
     where: { id: req.params.id },
     include: {
       custodians: { include: { user: { select: { id: true, name: true, email: true } } } },
       loans: {
+        where: loanWhere,
         include: { borrower: { select: { id: true, name: true, email: true } } },
         orderBy: { requestedAt: "desc" },
       },

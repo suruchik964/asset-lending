@@ -51,7 +51,6 @@ router.get("/mine", async (req, res) => {
   res.json(loans.map(withComputedStatus));
 });
 
-// GET /api/loans — librarian only, basic list for now (search/filter/pagination comes next step)
 // GET /api/loans — librarian only. Supports search, filters, sort, pagination — all server-side.
 router.get('/', requireRole('LIBRARIAN'), async (req, res) => {
   const {
@@ -162,6 +161,9 @@ router.post("/", async (req, res) => {
     return res.status(400).json({ error: "Item not found or archived" });
   }
 
+  const borrower = await prisma.user.findUnique({ where: { id: borrowerId } });
+  if (!borrower) return res.status(400).json({ error: "Borrower not found" });
+
   const loan = await prisma.$transaction(async (tx) => {
     const created = await tx.loan.create({
       data: { itemId, borrowerId, status: "REQUESTED" },
@@ -183,6 +185,11 @@ router.post("/:id/issue", requireRole("LIBRARIAN"), async (req, res) => {
       .status(400)
       .json({ error: "dueDate is required to issue a loan" });
 
+  const parsedDueDate = new Date(dueDate);
+  if (Number.isNaN(parsedDueDate.getTime())) {
+    return res.status(400).json({ error: "dueDate must be a valid date" });
+  }
+
   const loan = await prisma.loan.findUnique({ where: { id: req.params.id } });
   if (!loan) return res.status(404).json({ error: "Loan not found" });
   if (loan.status !== "REQUESTED") {
@@ -202,12 +209,12 @@ router.post("/:id/issue", requireRole("LIBRARIAN"), async (req, res) => {
         });
     }
 
-  // The core rule: item cannot have any other open loan (Requested or Issued)
+  // Requests are a queue, not a checkout: only an already-issued loan blocks issue.
   const conflicting = await prisma.loan.findFirst({
     where: {
       itemId: loan.itemId,
       id: { not: loan.id },
-      status: { in: ["REQUESTED", "ISSUED"] },
+      status: "ISSUED",
     },
   });
   if (conflicting) {
@@ -215,7 +222,7 @@ router.post("/:id/issue", requireRole("LIBRARIAN"), async (req, res) => {
       .status(409)
       .json({
         error:
-          "This item already has an open loan against it and cannot be issued again until that loan is returned or marked lost.",
+          "This item already has an issued loan and cannot be issued again until that loan is returned or marked lost.",
       });
   }
 
@@ -225,7 +232,7 @@ router.post("/:id/issue", requireRole("LIBRARIAN"), async (req, res) => {
       data: {
         status: "ISSUED",
         issuedAt: new Date(),
-        dueDate: new Date(dueDate),
+        dueDate: parsedDueDate,
       },
     });
     await tx.loanEvent.create({
