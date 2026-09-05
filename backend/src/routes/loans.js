@@ -223,7 +223,7 @@ router.post("/:id/issue", requireRole("LIBRARIAN"), async (req, res) => {
       .status(409)
       .json({
         error:
-          "This item already has an issued loan and cannot be issued again until that loan is returned or marked lost.",
+          "This item already has an issued loan and cannot be issued again until that loan is returned.",
       });
   }
 

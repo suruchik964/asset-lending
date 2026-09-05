@@ -60,11 +60,256 @@ export default function Loans() {
     catch { setError("Failed to export CSV"); }
   }
 
-  return <div className="max-w-6xl"><div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="mb-1 text-sm font-semibold text-indigo-700">LENDING DESK</p><h1 className="text-3xl font-semibold tracking-tight">Loans</h1></div><div className="flex gap-2"><button onClick={exportCsv} className="rounded bg-slate-200 px-4 py-2 text-sm">Export CSV</button>{selected.length > 0 && <button onClick={bulkReturn} className="rounded bg-emerald-600 px-4 py-2 text-sm text-white">Return selected ({selected.length})</button>}</div></div>
-    {error && <p role="alert" className="mb-4 rounded bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-    <form onSubmit={createLoan} className="mb-4 flex flex-wrap gap-2 rounded bg-white p-4 shadow"><select required value={newLoan.itemId} onChange={(e) => setNewLoan({ ...newLoan, itemId: e.target.value })} className="rounded border px-3 py-2 text-sm"><option value="">Item to request directly</option>{items.filter((item) => !item.archived).map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select><select required value={newLoan.borrowerId} onChange={(e) => setNewLoan({ ...newLoan, borrowerId: e.target.value })} className="rounded border px-3 py-2 text-sm"><option value="">Borrower</option>{borrowers.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select><button className="rounded bg-indigo-700 px-4 py-2 text-sm text-white">Create request</button></form>
-    <form onSubmit={search} className="mb-4 grid gap-2 md:grid-cols-4"><input placeholder="Search item or borrower" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} className="rounded border px-3 py-2"/><select value={filters.status} onChange={(e) => updateFilter("status", e.target.value)} className="rounded border px-3 py-2"><option value="">All statuses</option>{["REQUESTED", "ISSUED", "OVERDUE", "RETURNED", "LOST"].map((value) => <option key={value}>{value}</option>)}</select><select value={filters.itemId} onChange={(e) => updateFilter("itemId", e.target.value)} className="rounded border px-3 py-2"><option value="">All items</option>{items.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select><select value={filters.borrowerId} onChange={(e) => updateFilter("borrowerId", e.target.value)} className="rounded border px-3 py-2"><option value="">All borrowers</option>{borrowers.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select><select value={filters.sortBy} onChange={(e) => updateFilter("sortBy", e.target.value)} className="rounded border px-3 py-2"><option value="requestedAt">Requested date</option><option value="dueDate">Due date</option><option value="status">Status</option></select><select value={filters.sortDir} onChange={(e) => updateFilter("sortDir", e.target.value)} className="rounded border px-3 py-2"><option value="desc">Newest / descending</option><option value="asc">Oldest / ascending</option></select><button className="rounded bg-indigo-700 px-4 py-2 text-white">Search</button></form>
-    {loading ? <p>Loading…</p> : <div className="divide-y rounded bg-white shadow">{loans.map((loan) => <div key={loan.id} className="flex items-center justify-between gap-4 p-4"><div className="flex items-center gap-3">{loan.status === "ISSUED" && <input type="checkbox" checked={selected.includes(loan.id)} onChange={() => setSelected((ids) => ids.includes(loan.id) ? ids.filter((id) => id !== loan.id) : [...ids, loan.id])}/>}<div><Link to={`/loans/${loan.id}`} className="font-semibold text-indigo-700">{loan.item.title}</Link><p className="text-sm text-slate-500">{loan.borrower.name}{loan.dueDate && ` · due ${new Date(loan.dueDate).toLocaleDateString()}`}</p><StatusBadge status={loan.status} overdue={loan.isOverdue}/></div></div><div className="flex gap-2">{loan.status === "REQUESTED" && <button onClick={() => issue(loan.id)} className="rounded bg-indigo-700 px-3 py-1 text-sm text-white">Issue</button>}{loan.status === "ISSUED" && <><button onClick={() => transition(loan.id, "return")} className="rounded bg-emerald-600 px-3 py-1 text-sm text-white">Return</button><button onClick={() => transition(loan.id, "lost")} className="rounded bg-red-600 px-3 py-1 text-sm text-white">Lost</button></>}</div></div>)}{loans.length === 0 && <p className="p-4 text-slate-500">No loans found.</p>}</div>}
-    <div className="mt-4 flex items-center justify-between text-sm"><span>Page {pagination.page} of {pagination.totalPages || 1} ({pagination.total} total)</span><div className="flex gap-2"><button disabled={page <= 1} onClick={() => setPage(page - 1)} className="rounded border px-3 py-1 disabled:opacity-50">Previous</button><button disabled={page >= pagination.totalPages} onClick={() => setPage(page + 1)} className="rounded border px-3 py-1 disabled:opacity-50">Next</button></div></div>
-  </div>;
+  return (
+    <div className="max-w-6xl">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="mb-1 text-sm font-semibold text-indigo-700">
+            LENDING DESK
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight">Loans</h1>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={exportCsv}
+            className="rounded bg-slate-200 px-4 py-2 text-sm"
+          >
+            Export CSV
+          </button>
+          {selected.length > 0 && (
+            <button
+              onClick={bulkReturn}
+              className="rounded bg-emerald-600 px-4 py-2 text-sm text-white"
+            >
+              Return selected ({selected.length})
+            </button>
+          )}
+        </div>
+      </div>
+      {error && (
+        <p
+          role="alert"
+          className="mb-4 rounded bg-red-50 p-3 text-sm text-red-700"
+        >
+          {error}
+        </p>
+      )}
+      <form
+        onSubmit={createLoan}
+        className="mb-4 flex flex-wrap gap-2 rounded bg-white p-4 shadow"
+      >
+        <select
+          required
+          value={newLoan.itemId}
+          onChange={(e) => setNewLoan({ ...newLoan, itemId: e.target.value })}
+          className="rounded border px-3 py-2 text-sm"
+        >
+          <option value="">Item to request directly</option>
+          {items
+            .filter((item) => !item.archived)
+            .map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.title}
+              </option>
+            ))}
+        </select>
+        <select
+          required
+          value={newLoan.borrowerId}
+          onChange={(e) =>
+            setNewLoan({ ...newLoan, borrowerId: e.target.value })
+          }
+          className="rounded border px-3 py-2 text-sm"
+        >
+          <option value="">Borrower</option>
+          {borrowers.map((person) => (
+            <option key={person.id} value={person.id}>
+              {person.name}
+            </option>
+          ))}
+        </select>
+        <button className="rounded bg-indigo-700 px-4 py-2 text-sm text-white">
+          Create request
+        </button>
+      </form>
+      <form onSubmit={search} className="mb-5 rounded-xl bg-white p-4 shadow">
+        {/* Search Bar */}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+              🔍
+            </span>
+
+            <input
+              placeholder="Search by item or borrower..."
+              value={filters.q}
+              onChange={(e) => setFilters({ ...filters, q: e.target.value })}
+              className="w-full rounded-lg border border-slate-300 bg-slate-50 py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="rounded-lg bg-indigo-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-800"
+          >
+            Search
+          </button>
+        </div>
+
+        {/* Filters */}
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          <select
+            value={filters.status}
+            onChange={(e) => updateFilter("status", e.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="">All statuses</option>
+            {["REQUESTED", "ISSUED", "OVERDUE", "RETURNED", "LOST"].map(
+              (value) => (
+                <option key={value}>{value}</option>
+              ),
+            )}
+          </select>
+
+          <select
+            value={filters.itemId}
+            onChange={(e) => updateFilter("itemId", e.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="">All items</option>
+            {items.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.title}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={filters.borrowerId}
+            onChange={(e) => updateFilter("borrowerId", e.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="">All borrowers</option>
+            {borrowers.map((person) => (
+              <option key={person.id} value={person.id}>
+                {person.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={filters.sortBy}
+            onChange={(e) => updateFilter("sortBy", e.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="requestedAt">Requested date</option>
+            <option value="dueDate">Due date</option>
+            <option value="status">Status</option>
+          </select>
+
+          <select
+            value={filters.sortDir}
+            onChange={(e) => updateFilter("sortDir", e.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="desc">Newest / descending</option>
+            <option value="asc">Oldest / ascending</option>
+          </select>
+        </div>
+      </form>{" "}
+      {loading ? (
+        <p>Loading…</p>
+      ) : (
+        <div className="divide-y rounded bg-white shadow">
+          {loans.map((loan) => (
+            <div
+              key={loan.id}
+              className="flex items-center justify-between gap-4 p-4"
+            >
+              <div className="flex items-center gap-3">
+                {loan.status === "ISSUED" && (
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(loan.id)}
+                    onChange={() =>
+                      setSelected((ids) =>
+                        ids.includes(loan.id)
+                          ? ids.filter((id) => id !== loan.id)
+                          : [...ids, loan.id],
+                      )
+                    }
+                  />
+                )}
+                <div>
+                  <Link
+                    to={`/loans/${loan.id}`}
+                    className="font-semibold text-indigo-700"
+                  >
+                    {loan.item.title}
+                  </Link>
+                  <p className="text-sm text-slate-500">
+                    {loan.borrower.name}
+                    {loan.dueDate &&
+                      ` · due ${new Date(loan.dueDate).toLocaleDateString()}`}
+                  </p>
+                  <StatusBadge status={loan.status} overdue={loan.isOverdue} />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                {loan.status === "REQUESTED" && (
+                  <button
+                    onClick={() => issue(loan.id)}
+                    className="rounded bg-indigo-700 px-3 py-1 text-sm text-white"
+                  >
+                    Issue
+                  </button>
+                )}
+                {loan.status === "ISSUED" && (
+                  <>
+                    <button
+                      onClick={() => transition(loan.id, "return")}
+                      className="rounded bg-emerald-600 px-3 py-1 text-sm text-white"
+                    >
+                      Return
+                    </button>
+                    <button
+                      onClick={() => transition(loan.id, "lost")}
+                      className="rounded bg-red-600 px-3 py-1 text-sm text-white"
+                    >
+                      Lost
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+          {loans.length === 0 && (
+            <p className="p-4 text-slate-500">No loans found.</p>
+          )}
+        </div>
+      )}
+      <div className="mt-4 flex items-center justify-between text-sm">
+        <span>
+          Page {pagination.page} of {pagination.totalPages || 1} (
+          {pagination.total} total)
+        </span>
+        <div className="flex gap-2">
+          <button
+            disabled={page <= 1}
+            onClick={() => setPage(page - 1)}
+            className="rounded border px-3 py-1 disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <button
+            disabled={page >= pagination.totalPages}
+            onClick={() => setPage(page + 1)}
+            className="rounded border px-3 py-1 disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
