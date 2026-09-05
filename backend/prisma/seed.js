@@ -8,12 +8,11 @@ async function main() {
 
   const passwordHash = await bcrypt.hash("password123", 10);
 
-  // Users
   const librarian1 = await prisma.user.upsert({
     where: { email: "librarian1@example.com" },
-    update: { name: "Alex Librarian" },
+    update: {},
     create: {
-      name: "Alex Librarian",
+      name: "Asha Rao",
       email: "librarian1@example.com",
       passwordHash,
       role: "LIBRARIAN",
@@ -21,9 +20,9 @@ async function main() {
   });
   const librarian2 = await prisma.user.upsert({
     where: { email: "librarian2@example.com" },
-    update: { name: "Blair Librarian" },
+    update: {},
     create: {
-      name: "Blair Librarian",
+      name: "Vikram Shah",
       email: "librarian2@example.com",
       passwordHash,
       role: "LIBRARIAN",
@@ -31,16 +30,25 @@ async function main() {
   });
   const member1 = await prisma.user.upsert({
     where: { email: "member1@example.com" },
-    update: { name: "Casey Member" },
-    create: { name: "Casey Member", email: "member1@example.com", passwordHash, role: "MEMBER" },
+    update: {},
+    create: {
+      name: "Priya Nair",
+      email: "member1@example.com",
+      passwordHash,
+      role: "MEMBER",
+    },
   });
   const member2 = await prisma.user.upsert({
     where: { email: "member2@example.com" },
-    update: { name: "Dana Member" },
-    create: { name: "Dana Member", email: "member2@example.com", passwordHash, role: "MEMBER" },
+    update: {},
+    create: {
+      name: "Rahul Mehta",
+      email: "member2@example.com",
+      passwordHash,
+      role: "MEMBER",
+    },
   });
 
-  // Items
   const itemsData = [
     { title: "Canon EOS R5", category: "Camera", code: "CAM-101" },
     { title: "Sony A7 III", category: "Camera", code: "CAM-102" },
@@ -60,7 +68,6 @@ async function main() {
     items.push(item);
   }
 
-  // Custodians
   await prisma.custodian.upsert({
     where: { userId_itemId: { userId: librarian1.id, itemId: items[0].id } },
     update: {},
@@ -72,10 +79,8 @@ async function main() {
     create: { userId: librarian2.id, itemId: items[3].id },
   });
 
-  // Loans: one issued+overdue, one issued+on-time, one requested, one returned
   const existingLoans = await prisma.loan.count();
   if (existingLoans === 0) {
-    // Overdue loan
     const overdueLoan = await prisma.loan.create({
       data: {
         itemId: items[1].id,
@@ -93,7 +98,6 @@ async function main() {
       data: { loanId: overdueLoan.id, type: "ISSUED", actorId: librarian1.id },
     });
 
-    // On-time issued loan
     const onTimeLoan = await prisma.loan.create({
       data: {
         itemId: items[4].id,
@@ -111,7 +115,6 @@ async function main() {
       data: { loanId: onTimeLoan.id, type: "ISSUED", actorId: librarian2.id },
     });
 
-    // Pending request
     const pendingLoan = await prisma.loan.create({
       data: {
         itemId: items[5].id,
@@ -124,7 +127,6 @@ async function main() {
       data: { loanId: pendingLoan.id, type: "REQUESTED", actorId: member1.id },
     });
 
-    // Returned loan (history)
     const returnedLoan = await prisma.loan.create({
       data: {
         itemId: items[2].id,

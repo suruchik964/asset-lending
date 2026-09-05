@@ -1,98 +1,12 @@
 import { useState } from "react";
-import { useNavigate, Link, Navigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import AuthShell from "../components/AuthShell";
 
 export default function Signup() {
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState("MEMBER");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const { signup, user } = useAuth();
-  const navigate = useNavigate();
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-    try {
-      await signup(name, email, password, role);
-      navigate("/");
-    } catch (err) {
-      setError(err.response?.data?.error || "Signup failed");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  if (user) return <Navigate to="/" replace />;
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-8 rounded-lg shadow-md w-full max-w-sm"
-      >
-        <h1 className="text-2xl font-bold mb-6">Asset Lending — Sign up</h1>
-
-        {error && (
-          <div className="bg-red-50 text-red-700 p-3 rounded mb-4 text-sm">
-            {error}
-          </div>
-        )}
-
-        <label className="block mb-2 text-sm font-medium">Name</label>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full border rounded px-3 py-2 mb-4"
-          required
-        />
-
-        <label className="block mb-2 text-sm font-medium">Email</label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full border rounded px-3 py-2 mb-4"
-          required
-        />
-
-        <label className="block mb-2 text-sm font-medium">Password</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full border rounded px-3 py-2 mb-4"
-          required
-        />
-
-        <label className="block mb-2 text-sm font-medium">Role</label>
-        <select
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-          className="w-full border rounded px-3 py-2 mb-6"
-        >
-          <option value="MEMBER">Member</option>
-          <option value="LIBRARIAN">Librarian</option>
-        </select>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-        >
-          {loading ? "Signing up..." : "Sign up"}
-        </button>
-
-        <p className="text-sm text-center mt-4">
-          Already have an account?{" "}
-          <Link to="/login" className="text-blue-600">
-            Log in
-          </Link>
-        </p>
-      </form>
-    </div>
-  );
+  const [email, setEmail] = useState(""); const [name, setName] = useState(""); const [password, setPassword] = useState(""); const [role, setRole] = useState("MEMBER"); const [error, setError] = useState(""); const [loading, setLoading] = useState(false);
+  const { signup } = useAuth(); const navigate = useNavigate();
+  async function handleSubmit(e) { e.preventDefault(); setError(""); setLoading(true); try { const result = await signup(name, email, password, role); navigate(result.role === "LIBRARIAN" ? "/dashboard" : "/my-loans", { replace: true }); } catch (err) { setError(err.response?.data?.error || "Signup failed"); } finally { setLoading(false); } }
+  const field = "mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-50";
+  return <AuthShell mode="signup"><form onSubmit={handleSubmit} className="space-y-4">{error && <div className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-700">{error}</div>}<label className="block text-sm font-medium text-slate-700">Name<input value={name} onChange={(e) => setName(e.target.value)} className={field} required /></label><label className="block text-sm font-medium text-slate-700">Email<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={field} required /></label><label className="block text-sm font-medium text-slate-700">Password<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={field} required /></label><label className="block text-sm font-medium text-slate-700">I’ll use Asset Lending as a<select value={role} onChange={(e) => setRole(e.target.value)} className={field}><option value="MEMBER">Member — borrow items</option><option value="LIBRARIAN">Librarian — manage lending</option></select></label><button type="submit" disabled={loading} className="w-full rounded-xl bg-indigo-700 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-800 disabled:opacity-50">{loading ? "Creating account..." : "Create account"}</button><p className="pt-1 text-center text-sm text-slate-500">Already have an account? <Link to="/login" className="font-semibold text-indigo-700 hover:text-indigo-900">Log in</Link></p></form></AuthShell>;
 }

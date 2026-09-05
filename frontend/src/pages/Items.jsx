@@ -2,6 +2,10 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import client from "../api/client";
+import Button from "../components/Button";
+import Card from "../components/Card";
+import EmptyState from "../components/EmptyState";
+import Skeleton from "../components/Skeleton";
 
 export default function Items() {
   const { user } = useAuth();
@@ -12,12 +16,15 @@ export default function Items() {
   const [category, setCategory] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
+  const [importReport, setImportReport] = useState(null);
+  const [importing, setImporting] = useState(false);
 
-  function loadItems() {
+  function loadItems(includeArchived = showArchived) {
     setLoading(true);
     setError("");
     client
-      .get("/items")
+      .get("/items", { params: includeArchived ? { includeArchived: "true" } : {} })
       .then((res) => setItems(res.data))
       .catch((err) => {
         setItems([]);
@@ -28,7 +35,7 @@ export default function Items() {
 
   useEffect(() => {
     loadItems();
-  }, []);
+  }, [showArchived]);
 
   async function handleCreate(e) {
     e.preventDefault();
@@ -46,9 +53,13 @@ export default function Items() {
   }
 
   async function handleArchive(id, archived) {
-    const action = archived ? "restore" : "archive";
-    await client.patch(`/items/${id}/${action}`);
-    loadItems();
+    try {
+      const action = archived ? "restore" : "archive";
+      await client.patch(`/items/${id}/${action}`);
+      loadItems();
+    } catch (err) {
+      setError(err.response?.data?.error || "Failed to update item status");
+    }
   }
 
   async function handleRequest(itemId) {
@@ -60,26 +71,44 @@ export default function Items() {
     }
   }
 
-  if (loading) return <p>Loading catalogue...</p>;
+  async function handleImport(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setError("");
+    setImportReport(null);
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await client.post("/items/import", formData);
+      setImportReport(response.data);
+      loadItems();
+    } catch (err) {
+      setError(err.response?.data?.error || "Failed to import CSV");
+    } finally {
+      setImporting(false);
+      event.target.value = "";
+    }
+  }
+
+  if (loading) return <Skeleton />;
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Catalogue</h1>
-        {user.role === "LIBRARIAN" && (
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="bg-blue-600 text-white px-4 py-2 rounded"
-          >
-            {showForm ? "Cancel" : "+ Add Item"}
-          </button>
-        )}
+    <div className="max-w-5xl">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div><p className="mb-1 text-sm font-semibold text-indigo-700">YOUR COLLECTION</p><h1 className="text-3xl font-semibold tracking-tight">Catalogue</h1><p className="mt-1 text-sm text-slate-500">Browse available assets, request a loan, or keep your collection up to date.</p></div>
+        <div className="flex items-center gap-3">
+          {user.role === "LIBRARIAN" && <label className="text-sm text-gray-600 flex items-center gap-2"><input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} /> Show archived</label>}
+          {user.role === "LIBRARIAN" && (
+            <><label className="cursor-pointer rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">{importing ? "Importing..." : "Import CSV"}<input type="file" accept=".csv,text/csv" onChange={handleImport} disabled={importing} className="hidden" /></label><Button onClick={() => setShowForm(!showForm)}>{showForm ? "Cancel" : "+ Add Item"}</Button></>
+          )}
+        </div>
       </div>
 
       {showForm && (
         <form
           onSubmit={handleCreate}
-          className="bg-white p-4 rounded shadow mb-6 max-w-md"
+          className="mb-6 max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
         >
           {error && (
             <div className="bg-red-50 text-red-700 p-2 rounded mb-3 text-sm">
@@ -90,29 +119,24 @@ export default function Items() {
             placeholder="Title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full border rounded px-3 py-2 mb-3"
+            className="mb-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             required
           />
           <input
             placeholder="Category"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="w-full border rounded px-3 py-2 mb-3"
+            className="mb-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             required
           />
           <input
             placeholder="Code (unique)"
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            className="w-full border rounded px-3 py-2 mb-3"
+            className="mb-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             required
           />
-          <button
-            type="submit"
-            className="bg-green-600 text-white px-4 py-2 rounded"
-          >
-            Create
-          </button>
+          <Button type="submit">Create item</Button>
         </form>
       )}
 
@@ -120,13 +144,15 @@ export default function Items() {
         <div className="bg-red-50 text-red-700 p-3 rounded mb-4 text-sm" role="alert">{error}</div>
       )}
 
-      <div className="bg-white rounded shadow divide-y">
+      {importReport && <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4 text-sm"><p className="font-semibold">Import complete: {importReport.succeeded} imported, {importReport.failed} failed.</p><ul className="mt-2 list-disc pl-5 text-slate-600">{importReport.report.map((row) => <li key={row.row} className={row.success ? "text-emerald-700" : "text-red-700"}>Row {row.row}: {row.success ? "imported" : row.error}</li>)}</ul></div>}
+
+      {items.length === 0 ? <EmptyState message="No catalogue items to show." /> : <Card className="divide-y divide-slate-100 p-0">
         {items.map((item) => (
-          <div key={item.id} className="p-4 flex justify-between items-center">
+          <div key={item.id} className="flex items-center justify-between gap-4 p-5 transition hover:bg-slate-50/80">
             <div>
               <Link
                 to={`/items/${item.id}`}
-                className="font-semibold text-blue-600 hover:underline"
+                className="text-sm font-semibold text-indigo-700 hover:text-indigo-900 hover:underline"
               >
                 {item.title}
               </Link>
@@ -145,20 +171,12 @@ export default function Items() {
                 </button>
               )}
               {user.role === "LIBRARIAN" && (
-                <button
-                  onClick={() => handleArchive(item.id, item.archived)}
-                  className="text-sm bg-gray-200 px-3 py-1 rounded"
-                >
-                  {item.archived ? "Restore" : "Archive"}
-                </button>
+                <><Link to={`/items/${item.id}`} className="rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50">Manage custodians</Link><button onClick={() => handleArchive(item.id, item.archived)} className="rounded-lg bg-slate-200 px-3 py-1.5 text-sm font-medium hover:bg-slate-300">{item.archived ? "Restore" : "Archive"}</button></>
               )}
             </div>
           </div>
         ))}
-        {items.length === 0 && (
-          <p className="p-4 text-gray-500">No items yet.</p>
-        )}
-      </div>
+      </Card>}
     </div>
   );
 }

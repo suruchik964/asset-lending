@@ -11,7 +11,7 @@ export default function MyItems() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">My Items (I'm Custodian)</h1>
+      <div className="mb-6"><p className="mb-1 text-sm font-semibold text-indigo-700">CUSTODIAN VIEW</p><h1 className="text-3xl font-semibold tracking-tight">My items</h1><p className="mt-1 text-sm text-slate-500">Assets you help keep ready, accounted for, and lending smoothly.</p></div>
       <div className="bg-white rounded shadow divide-y">
         {items.map((item) => (
           <div key={item.id} className="p-4">
@@ -21,6 +21,7 @@ export default function MyItems() {
             >
               {item.title}
             </Link>
+            {item.archived && <span className="ml-2 rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">Archived</span>}
             <p className="text-sm text-gray-500">
               {item.category} · {item.code}
             </p>

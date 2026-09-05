@@ -1,100 +1,17 @@
 import { useState, useEffect } from "react";
+import { ArrowUpRight, CalendarClock, PackageOpen, RotateCcw, TriangleAlert } from "lucide-react";
 import client from "../api/client";
+import Card from "../components/Card";
+import Skeleton from "../components/Skeleton";
+import StatusBadge from "../components/StatusBadge";
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
-
-  useEffect(() => {
-    client.get("/dashboard").then((res) => setData(res.data));
-  }, []);
-
-  if (!data) return <p>Loading...</p>;
-
-  const maxCount = Math.max(...data.returnsPerWeek.map((w) => w.count), 1);
-
-  return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
-
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        <StatCard label="Items Out" value={data.headline.itemsOut} />
-        <StatCard
-          label="Overdue"
-          value={data.headline.itemsOverdue}
-          color="text-red-600"
-        />
-        <StatCard
-          label="Returned This Week"
-          value={data.headline.returnedThisWeek}
-        />
-        <StatCard label="Total Items" value={data.headline.totalItems} />
-      </div>
-
-      <div className="grid grid-cols-2 gap-6">
-        <div className="bg-white p-4 rounded shadow">
-          <h2 className="font-semibold mb-3">Loans by Status</h2>
-          <div className="space-y-2">
-            {Object.entries(data.byStatus).map(([status, count]) => (
-              <div key={status} className="flex justify-between text-sm">
-                <span>{status}</span>
-                <span className="font-medium">{count}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded shadow">
-          <h2 className="font-semibold mb-3">Open Loans by Custodian</h2>
-          <div className="space-y-2">
-            {data.byCustodian.map((c) => (
-              <div key={c.userId} className="flex justify-between text-sm">
-                <span>{c.name}</span>
-                <span className="font-medium">{c.openLoans}</span>
-              </div>
-            ))}
-            {data.byCustodian.length === 0 && (
-              <p className="text-sm text-gray-500">
-                No custodians assigned yet.
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white p-4 rounded shadow mt-6">
-        <h2 className="font-semibold mb-3">
-          Items Returned per Week (last 8 weeks)
-        </h2>
-        <div className="flex items-end gap-2 h-32">
-          {data.returnsPerWeek.map((w) => (
-            <div
-              key={w.weekStart}
-              className="flex-1 flex flex-col items-center gap-1"
-            >
-              <div
-                className="bg-blue-500 w-full rounded-t"
-                style={{
-                  height: `${(w.count / maxCount) * 100}%`,
-                  minHeight: w.count > 0 ? "4px" : "0",
-                }}
-              />
-              <span className="text-xs text-gray-500">{w.count}</span>
-              <span className="text-xs text-gray-400">
-                {w.weekStart.slice(5)}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StatCard({ label, value, color = "text-gray-900" }) {
-  return (
-    <div className="bg-white p-4 rounded shadow">
-      <p className="text-sm text-gray-500">{label}</p>
-      <p className={`text-3xl font-bold ${color}`}>{value}</p>
-    </div>
-  );
+  useEffect(() => { client.get("/dashboard").then((res) => setData(res.data)); }, []);
+  if (!data) return <Skeleton cards rows={4} />;
+  const max = Math.max(...data.returnsPerWeek.map((w) => w.count), 1);
+  const total = Math.max(Object.values(data.byStatus).reduce((a,b) => a+b, 0), 1);
+  const out = (data.byStatus.ISSUED || 0) + (data.byStatus.OVERDUE || 0); const pct = Math.round(out / total * 100);
+  const stats = [["Items currently out", data.headline.itemsOut, PackageOpen, "bg-indigo-50 text-indigo-700"], ["Needs attention", data.headline.itemsOverdue, TriangleAlert, "bg-rose-50 text-rose-600"], ["Returned this week", data.headline.returnedThisWeek, RotateCcw, "bg-emerald-50 text-emerald-600"], ["Total collection", data.headline.totalItems, CalendarClock, "bg-amber-50 text-amber-600"]];
+  return <div className="max-w-6xl"><div className="mb-8 flex flex-wrap items-end justify-between gap-4"><div><p className="mb-2 text-sm font-semibold text-indigo-700">LENDING OVERVIEW</p><h1 className="text-3xl font-semibold tracking-tight">Here’s the pulse.</h1><p className="mt-2 text-sm text-slate-500">A quick view of what’s moving through your collection.</p></div><div className="rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-800"><b>{data.headline.itemsOverdue}</b> item{data.headline.itemsOverdue === 1 ? "" : "s"} may need a follow-up</div></div><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{stats.map(([label,value,Icon,tone]) => <Card key={label} className="relative overflow-hidden border-slate-100 p-5"><span className={`mb-5 inline-flex rounded-xl p-2.5 ${tone}`}><Icon size={19}/></span><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-1 text-3xl font-semibold tracking-tight">{value}</p><ArrowUpRight className="absolute bottom-5 right-5 text-slate-300" size={18}/></Card>)}</div><div className="mt-6 grid gap-6 lg:grid-cols-[1.5fr_1fr]"><Card className="p-6"><div className="flex items-start justify-between"><div><h2 className="font-semibold">Return rhythm</h2><p className="mt-1 text-sm text-slate-500">Items returned over the last eight weeks</p></div><span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">On track</span></div><div className="mt-9 flex h-44 items-end gap-2">{data.returnsPerWeek.map((w) => <div key={w.weekStart} className="group flex flex-1 flex-col items-center gap-2"><span className="text-xs font-semibold text-slate-600 opacity-0 transition group-hover:opacity-100">{w.count}</span><div className="w-full rounded-t-lg bg-gradient-to-t from-indigo-700 to-indigo-400 transition group-hover:from-cyan-500 group-hover:to-indigo-500" style={{height: `${Math.max(w.count / max * 100, w.count ? 8 : 2)}%`}}/><span className="text-[10px] text-slate-400">{w.weekStart.slice(5)}</span></div>)}</div></Card><Card className="p-6"><h2 className="font-semibold">Collection activity</h2><p className="mt-1 text-sm text-slate-500">Open loans in context</p><div className="mt-6 flex items-center gap-5"><div className="grid h-28 w-28 shrink-0 place-items-center rounded-full" style={{background:`conic-gradient(#4f46e5 ${pct}%, #e2e8f0 0)`}}><div className="grid h-20 w-20 place-items-center rounded-full bg-white text-center"><b className="text-xl">{pct}%</b><span className="text-[10px] text-slate-400">out now</span></div></div><div className="space-y-2 text-sm">{Object.entries(data.byStatus).map(([status,count]) => <div key={status} className="flex items-center justify-between gap-4"><StatusBadge status={status}/><b>{count}</b></div>)}</div></div></Card></div><div className="mt-6 grid gap-6 lg:grid-cols-2"><Card><h2 className="font-semibold">Custodian workload</h2><p className="mb-5 mt-1 text-sm text-slate-500">Open loans currently under each custodian.</p>{data.byCustodian.length ? <div className="space-y-4">{data.byCustodian.map((c) => <div key={c.userId}><div className="mb-1.5 flex justify-between text-sm"><span className="font-medium">{c.name}</span><span className="text-slate-500">{c.openLoans} open</span></div><div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-indigo-600" style={{width:`${Math.min(100,c.openLoans/Math.max(...data.byCustodian.map(x=>x.openLoans),1)*100)}%`}}/></div></div>)}</div> : <p className="text-sm text-slate-500">No custodians assigned yet.</p>}</Card><Card className="bg-slate-950 text-white"><p className="text-xs font-bold tracking-[.16em] text-indigo-300">NEXT BEST ACTION</p><h2 className="mt-3 text-xl font-semibold">Keep loans moving without the follow-up scramble.</h2><p className="mt-3 text-sm leading-6 text-slate-300">Review overdue loans in Alerts, or head to Loans to issue pending requests.</p><a href="/alerts" className="mt-6 inline-flex rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 hover:bg-indigo-100">Review alerts</a></Card></div></div>;
 }

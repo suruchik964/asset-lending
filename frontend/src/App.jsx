@@ -11,15 +11,11 @@ import MyLoans from "./pages/MyLoans";
 import MyItems from "./pages/MyItems";
 import Dashboard from "./pages/Dashboard";
 import Alerts from "./pages/Alerts";
+import Landing from "./pages/Landing";
 
 function Home() {
   const { user } = useAuth();
-  return (
-    <div>
-      <h1 className="text-2xl font-bold mb-2">Welcome, {user.name}</h1>
-      <p className="text-gray-600">You are signed in as a {user.role.toLowerCase()}.</p>
-    </div>
-  );
+  return <Navigate to={user.role === "LIBRARIAN" ? "/dashboard" : "/my-loans"} replace />;
 }
 
 function PrivateRoute({ children }) {
@@ -30,6 +26,7 @@ function PrivateRoute({ children }) {
 export default function App() {
   return (
     <Routes>
+      <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route
@@ -39,7 +36,7 @@ export default function App() {
           </PrivateRoute>
         }
       >
-        <Route path="/" element={<Home />} />
+        <Route path="/app" element={<Home />} />
         <Route path="/items" element={<Items />} />
         <Route path="/items/:id" element={<ItemDetail />} />
         <Route path="/loans" element={<Loans />} />

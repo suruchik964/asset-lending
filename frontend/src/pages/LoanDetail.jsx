@@ -1,11 +1,15 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import client from "../api/client";
+import Card from "../components/Card";
+import StatusBadge from "../components/StatusBadge";
+import { useAuth } from "../context/AuthContext";
 
 export default function LoanDetail() {
   const { id } = useParams();
   const [loan, setLoan] = useState(null);
   const [note, setNote] = useState("");
+  const { user } = useAuth();
 
   function loadLoan() {
     client.get(`/loans/${id}`).then((res) => setLoan(res.data));
@@ -35,6 +39,7 @@ export default function LoanDetail() {
         {loan.borrower.name} · {loan.status}
         {loan.isOverdue && " · OVERDUE"}
       </p>
+      <div className="mb-6"><StatusBadge status={loan.status} overdue={loan.isOverdue} /></div>
 
       <div className="bg-white p-4 rounded shadow mb-6">
         <h2 className="font-semibold mb-3">Timeline</h2>
@@ -55,20 +60,21 @@ export default function LoanDetail() {
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded shadow mb-6">
+      <Card className="mb-6">
         <h2 className="font-semibold mb-3">Notes</h2>
         <div className="space-y-3">
           {loan.events.filter((ev) => ev.type === "NOTE").map((ev) => (
             <div key={ev.id} className="text-sm border-l-2 border-amber-200 pl-3">
+              {ev.note?.startsWith("System action:") && <span className="mb-1 inline-block rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600">System action</span>}
               <p>{ev.note}</p>
               <p className="text-gray-500 mt-1">by {ev.actor.name} · {new Date(ev.createdAt).toLocaleString()}</p>
             </div>
           ))}
           {!loan.events.some((ev) => ev.type === "NOTE") && <p className="text-sm text-gray-500">No notes yet.</p>}
         </div>
-      </div>
+      </Card>
 
-      <form
+      {user?.role === "LIBRARIAN" && <form
         onSubmit={handleAddNote}
         className="bg-white p-4 rounded shadow flex gap-2"
       >
@@ -84,7 +90,7 @@ export default function LoanDetail() {
         >
           Add Note
         </button>
-      </form>
+      </form>}
     </div>
   );
 }

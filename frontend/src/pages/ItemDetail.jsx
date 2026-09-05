@@ -10,9 +10,14 @@ export default function ItemDetail() {
   const [custodianId, setCustodianId] = useState("");
   const [librarians, setLibrarians] = useState([]);
   const [error, setError] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({ title: "", category: "", code: "" });
 
   function loadItem() {
-    client.get(`/items/${id}`).then((res) => setItem(res.data)).catch((err) => setError(err.response?.data?.error || "Failed to load item"));
+    client.get(`/items/${id}`).then((res) => {
+      setItem(res.data);
+      setForm({ title: res.data.title, category: res.data.category, code: res.data.code });
+    }).catch((err) => setError(err.response?.data?.error || "Failed to load item"));
   }
 
   useEffect(() => {
@@ -33,8 +38,34 @@ export default function ItemDetail() {
   }
 
   async function handleRemoveCustodian(userId) {
-    await client.delete(`/items/${id}/custodians/${userId}`);
-    loadItem();
+    try {
+      await client.delete(`/items/${id}/custodians/${userId}`);
+      loadItem();
+    } catch (err) {
+      setError(err.response?.data?.error || "Failed to remove custodian");
+    }
+  }
+
+  async function handleSaveItem(e) {
+    e.preventDefault();
+    setError("");
+    try {
+      await client.patch(`/items/${id}`, form);
+      setEditing(false);
+      loadItem();
+    } catch (err) {
+      setError(err.response?.data?.error || "Failed to update item");
+    }
+  }
+
+  async function handleArchive() {
+    setError("");
+    try {
+      await client.patch(`/items/${id}/${item.archived ? "restore" : "archive"}`);
+      loadItem();
+    } catch (err) {
+      setError(err.response?.data?.error || "Failed to update item status");
+    }
   }
 
   if (!item) return <p>Loading...</p>;
@@ -49,6 +80,24 @@ export default function ItemDetail() {
         {item.category} · {item.code}
         {item.archived && " · Archived"}
       </p>
+
+      {error && <div className="bg-red-50 text-red-700 p-2 rounded mb-4 text-sm" role="alert">{error}</div>}
+
+      {user.role === "LIBRARIAN" && (
+        <div className="bg-white p-4 rounded shadow mb-6">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="font-semibold">Item details</h2>
+            <div className="flex gap-2">
+              <button onClick={() => setEditing((value) => !value)} className="text-sm bg-gray-200 px-3 py-1 rounded">{editing ? "Cancel" : "Edit"}</button>
+              <button onClick={handleArchive} className="text-sm bg-gray-200 px-3 py-1 rounded">{item.archived ? "Restore" : "Archive"}</button>
+            </div>
+          </div>
+          {editing && <form onSubmit={handleSaveItem} className="grid gap-3 sm:grid-cols-3">
+            {[["title", "Title"], ["category", "Category"], ["code", "Code"]].map(([field, label]) => <label key={field} className="text-sm">{label}<input value={form[field]} onChange={(e) => setForm({ ...form, [field]: e.target.value })} className="mt-1 w-full border rounded px-3 py-2" required /></label>)}
+            <button type="submit" className="sm:col-span-3 bg-blue-600 text-white px-4 py-2 rounded justify-self-start">Save changes</button>
+          </form>}
+        </div>
+      )}
 
       {user.role === "LIBRARIAN" && (
         <div className="bg-white p-4 rounded shadow mb-6">
@@ -72,11 +121,6 @@ export default function ItemDetail() {
               <li className="text-gray-500">No custodians assigned</li>
             )}
           </ul>
-          {error && (
-            <div className="bg-red-50 text-red-700 p-2 rounded mb-2 text-sm">
-              {error}
-            </div>
-          )}
           <form onSubmit={handleAddCustodian} className="flex gap-2">
             <select
               value={custodianId}
