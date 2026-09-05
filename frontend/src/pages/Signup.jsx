@@ -8,5 +8,73 @@ export default function Signup() {
   const { signup } = useAuth(); const navigate = useNavigate();
   async function handleSubmit(e) { e.preventDefault(); setError(""); setLoading(true); try { const result = await signup(name, email, password, role); navigate(result.role === "LIBRARIAN" ? "/dashboard" : "/my-loans", { replace: true }); } catch (err) { setError(err.response?.data?.error || "Signup failed"); } finally { setLoading(false); } }
   const field = "mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-50";
-  return <AuthShell mode="signup"><form onSubmit={handleSubmit} className="space-y-4">{error && <div className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-700">{error}</div>}<label className="block text-sm font-medium text-slate-700">Name<input value={name} onChange={(e) => setName(e.target.value)} className={field} required /></label><label className="block text-sm font-medium text-slate-700">Email<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={field} required /></label><label className="block text-sm font-medium text-slate-700">Password<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={field} required /></label><label className="block text-sm font-medium text-slate-700">I’ll use Asset Lending as a<select value={role} onChange={(e) => setRole(e.target.value)} className={field}><option value="MEMBER">Member — borrow items</option><option value="LIBRARIAN">Librarian — manage lending</option></select></label><button type="submit" disabled={loading} className="w-full rounded-xl bg-indigo-700 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-800 disabled:opacity-50">{loading ? "Creating account..." : "Create account"}</button><p className="pt-1 text-center text-sm text-slate-500">Already have an account? <Link to="/login" className="font-semibold text-indigo-700 hover:text-indigo-900">Log in</Link></p></form></AuthShell>;
+  return (
+    <AuthShell mode="signup">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+        <label className="block text-sm font-medium text-slate-700">
+          Name
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className={field}
+            required
+          />
+        </label>
+        <label className="block text-sm font-medium text-slate-700">
+          Email
+          <input
+            type="email"
+            autoComplete="off"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className={field}
+            required
+          />
+        </label>
+        <label className="block text-sm font-medium text-slate-700">
+          Password
+          <input
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className={field}
+            required
+          />
+        </label>
+        <label className="block text-sm font-medium text-slate-700">
+          I’ll use Asset Lending as a
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            className={field}
+          >
+            <option value="MEMBER">Member — borrow items</option>
+            <option value="LIBRARIAN">Librarian — manage lending</option>
+          </select>
+        </label>
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full rounded-xl bg-indigo-700 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-800 disabled:opacity-50"
+        >
+          {loading ? "Creating account..." : "Create account"}
+        </button>
+        <p className="pt-1 text-center text-sm text-slate-500">
+          Already have an account?{" "}
+          <Link
+            to="/login"
+            className="font-semibold text-indigo-700 hover:text-indigo-900"
+          >
+            Log in
+          </Link>
+        </p>
+      </form>
+    </AuthShell>
+  );
 }
